@@ -80,7 +80,9 @@
     <li>Чек-листы «Готов ли я к старту» и «Как принять работу»</li>
   </ul>
 
-  <input type="text" id="contact" placeholder="Телефон или Telegram" autocomplete="tel" inputmode="text">
+  <input type="text" id="name" placeholder="Имя" autocomplete="given-name">
+  <input type="text" id="email" placeholder="Почта" autocomplete="email" inputmode="email"
+         autocapitalize="off" spellcheck="false" style="margin-top: 10px">
   <div class="err" id="err"></div>
 
   <button class="btn" id="submit">Получить гид</button>
@@ -113,7 +115,9 @@
   document.getElementById("over").textContent = HEADLINES[variant][0];
   document.getElementById("title").textContent = HEADLINES[variant][1];
 
-  const contact = document.getElementById("contact");
+  // Telegram-контакт бот получает сам, поэтому в форме — имя и почта
+  const name = document.getElementById("name");
+  const email = document.getElementById("email");
   const err = document.getElementById("err");
   const pd = document.getElementById("pd");
 
@@ -121,40 +125,26 @@
     tg.ready();
     tg.expand();
     const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
-    if (u && u.username) contact.value = "@" + u.username;
+    if (u && u.first_name) name.value = u.first_name;
   }
 
-  // маска +7 для телефона, @username для Telegram (ТЗ, стр. 2)
-  function formatPhone(v) {
-    let d = v.replace(/\D/g, "");
-    if (d[0] === "8" || d[0] === "7") d = d.slice(1);
-    d = d.slice(0, 10);
-    let out = "+7";
-    if (d.length) out += " (" + d.slice(0, 3);
-    if (d.length >= 3) out += ")";
-    if (d.length > 3) out += " " + d.slice(3, 6);
-    if (d.length > 6) out += "-" + d.slice(6, 8);
-    if (d.length > 8) out += "-" + d.slice(8, 10);
-    return out;
-  }
-  contact.addEventListener("input", () => {
-    const v = contact.value;
-    if (/^[+\d(]/.test(v)) contact.value = formatPhone(v);
-    contact.classList.remove("bad");
+  [name, email].forEach(el => el.addEventListener("input", () => {
+    el.classList.remove("bad");
     err.textContent = "";
-  });
+  }));
   pd.addEventListener("change", () => document.getElementById("pd-label").classList.remove("bad"));
 
-  function validContact(v) {
-    if (/^@[A-Za-z0-9_]{5,32}$/.test(v)) return true;
-    return v.replace(/\D/g, "").length === 11;
-  }
-
   document.getElementById("submit").addEventListener("click", () => {
-    const v = contact.value.trim();
-    if (!validContact(v)) {
-      contact.classList.add("bad");
-      err.textContent = "Введите телефон +7 … или Telegram @username";
+    const n = name.value.trim();
+    const e = email.value.trim();
+    if (n.length < 2) {
+      name.classList.add("bad");
+      err.textContent = "Как к вам обращаться? Введите имя";
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) {
+      email.classList.add("bad");
+      err.textContent = "Проверьте почту — например, ivan@mail.ru";
       return;
     }
     if (!pd.checked) {
@@ -163,7 +153,7 @@
       return;
     }
     const data = JSON.stringify({
-      contact: v, v: variant,
+      name: n, email: e, v: variant,
       pd: pd.checked,
       designer: document.getElementById("designer").checked,
       marketing: document.getElementById("marketing").checked,
